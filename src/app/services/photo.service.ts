@@ -9,6 +9,7 @@ import { Injectable } from '@angular/core';
 
 export class PhotoService {
   public photos: UserPhoto[] = [];
+  private PHOTO_STORAGE: string = 'photos';
 
   constructor() { }
 
@@ -20,8 +21,28 @@ export class PhotoService {
     });
 
     const savedImageFile = await this.savePicture(capturedPhoto);
+
     this.photos.unshift(savedImageFile);
 
+    Preferences.set({
+      key: this.PHOTO_STORAGE,
+      value: JSON.stringify(this.photos),
+    });
+
+  }
+
+  public async loadSaved() {
+    const photoList = await Preferences.get({ key: this.PHOTO_STORAGE });
+    this.photos = JSON.parse(photoList.value!) || [];
+
+    for (let photo of this.photos) {
+      const readFile = await Filesystem.readFile({
+        path: photo.filepath,
+        directory: Directory.Data,
+      });
+
+      photo.webviewPath = `data:image/jpeg;base64,${readFile.data}`;
+    }
   }
 
   private async savePicture(photo: Photo) {
